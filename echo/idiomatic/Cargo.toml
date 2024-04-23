@@ -1,0 +1,20 @@
+[workspace]
+members = [
+]
+[package]
+name = "rusty_echo"
+authors = ["C2Rust"]
+version = "0.0.0"
+publish = false
+edition = "2021"
+autobins = false
+
+[lib]
+name = "rusty_echo"
+path = "lib.rs"
+crate-type = ["staticlib", "rlib"]
+[[bin]]
+path = "src/echo.rs"
+name = "echo"
+[dependencies]
+libc= "0.2"
