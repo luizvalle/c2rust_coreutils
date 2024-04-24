@@ -213,12 +213,8 @@ unsafe extern "C" fn emit_ancillary_info(mut program: *const libc::c_char) {
     );
 }
 #[inline]
-unsafe extern "C" fn c_isxdigit(mut c: libc::c_int) -> bool {
-    match c {
-        48 | 49 | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57 | 97 | 98 | 99 | 100 | 101 | 102
-        | 65 | 66 | 67 | 68 | 69 | 70 => return 1 as libc::c_int != 0,
-        _ => return 0 as libc::c_int != 0,
-    };
+fn is_hex_digit(c: char) -> bool {
+    c.is_ascii_hexdigit()
 }
 #[no_mangle]
 pub unsafe extern "C" fn usage(mut status: libc::c_int) {
@@ -492,18 +488,15 @@ unsafe fn main_0(
                         }
                         120 => {
                             let mut ch: libc::c_uchar = *s as libc::c_uchar;
-                            if !c_isxdigit(ch as libc::c_int) {
+                            if !is_hex_digit(ch as char) {
                                 current_block_48 = 4727416921854594903;
                             } else {
                                 s = s.offset(1);
-                                s;
-                                c = hextobin(ch) as libc::c_uchar;
-                                ch = *s as libc::c_uchar;
-                                if c_isxdigit(ch as libc::c_int) {
+                                c = hextobin(ch) as u8;
+                                ch = *s as u8;
+                                if is_hex_digit(ch as char) {
                                     s = s.offset(1);
-                                    s;
-                                    c = (c as libc::c_int * 16 as libc::c_int + hextobin(ch))
-                                        as libc::c_uchar;
+                                    c = (c as u32 * 16 + hextobin(ch) as u32) as u8;
                                 }
                                 current_block_48 = 981995395831942902;
                             }
