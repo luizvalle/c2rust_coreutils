@@ -334,265 +334,121 @@ fn hex_to_bin(c: char) -> u8 {
         _ => c.to_digit(16).unwrap_or(0) as u8,
     }
 }
-unsafe fn main_0(
-    mut argc: libc::c_int,
-    mut argv: *mut *mut libc::c_char,
-) -> libc::c_int {
-    let mut display_return: bool = 1 as libc::c_int != 0;
-    let mut posixly_correct: bool = !(getenv(
-        b"POSIXLY_CORRECT\0" as *const u8 as *const libc::c_char,
-    ))
-        .is_null();
-    let mut allow_options: bool = !posixly_correct
-        || DEFAULT_ECHO_TO_XPG as libc::c_int == 0 && (1 as libc::c_int) < argc
-            && strcmp(
-                *argv.offset(1 as libc::c_int as isize),
-                b"-n\0" as *const u8 as *const libc::c_char,
-            ) == 0 as libc::c_int;
-    let mut do_v9: bool = DEFAULT_ECHO_TO_XPG as libc::c_int != 0;
-    set_program_name(*argv.offset(0 as libc::c_int as isize));
-    setlocale(6 as libc::c_int, b"\0" as *const u8 as *const libc::c_char);
-    bindtextdomain(
-        b"coreutils\0" as *const u8 as *const libc::c_char,
-        b"/usr/local/share/locale\0" as *const u8 as *const libc::c_char,
-    );
-    textdomain(b"coreutils\0" as *const u8 as *const libc::c_char);
-    atexit(Some(close_stdout as unsafe extern "C" fn() -> ()));
-    if allow_options as libc::c_int != 0 && argc == 2 as libc::c_int {
-        if strcmp(
-            *argv.offset(1 as libc::c_int as isize),
-            b"--help\0" as *const u8 as *const libc::c_char,
-        ) == 0 as libc::c_int
-        {
-            usage(0 as libc::c_int);
-        }
-        if strcmp(
-            *argv.offset(1 as libc::c_int as isize),
-            b"--version\0" as *const u8 as *const libc::c_char,
-        ) == 0 as libc::c_int
-        {
-            version_etc(
-                stdout,
-                b"echo\0" as *const u8 as *const libc::c_char,
-                b"GNU coreutils\0" as *const u8 as *const libc::c_char,
-                Version,
-                proper_name_lite(
-                    b"Brian Fox\0" as *const u8 as *const libc::c_char,
-                    b"Brian Fox\0" as *const u8 as *const libc::c_char,
-                ),
-                proper_name_lite(
-                    b"Chet Ramey\0" as *const u8 as *const libc::c_char,
-                    b"Chet Ramey\0" as *const u8 as *const libc::c_char,
-                ),
-                0 as *mut libc::c_void as *mut libc::c_char,
-            );
-            return 0 as libc::c_int;
+fn main_0(argc: i32, argv: &[String]) -> i32 {
+    let display_return = true;
+    let posixly_correct = std::env::var("POSIXLY_CORRECT").is_err();
+    let allow_options = !posixly_correct || (DEFAULT_ECHO_TO_XPG != 0) && argc > 1 && argv[1] == "-n";
+
+    let mut do_v9: bool = DEFAULT_ECHO_TO_XPG != 0;
+    
+    // Not translating calls to set_program_name, setlocale, bindtextdomain, textdomain, and atexit
+    if allow_options && argc == 2 {
+        if argv[1] == "--help" {
+            unsafe {
+                usage(0);
+            }
+        } else if argv[1] == "--version" {
+            use std::os::unix::ffi::OsStrExt;
+
+            unsafe {
+                use std::os::unix::io::AsRawFd;
+
+                // Obtain the raw file descriptor
+                let stdout_fd = std::io::stdout().as_raw_fd();
+
+                // Convert the file descriptor to a FILE pointer
+                let mut stdout_ptr = stdout_fd as *mut _;
+
+                let version_info = b"GNU coreutils\0" as *const u8;
+                let author_name1 = b"Brian Fox\0" as *const u8;
+                let author_name2 = b"Chet Ramey\0" as *const u8;
+
+                version_etc(
+                    stdout_ptr,
+                    program_name,
+                    version_info,
+                    Version,
+                    author_name1,
+                    author_name2,
+                    None::<&mut std::ffi::OsStr>,
+                );
+            }
+
+            return 0;
         }
     }
-    argc -= 1;
-    argc;
-    argv = argv.offset(1);
-    argv;
-    if allow_options {
-        's_65: while argc > 0 as libc::c_int
-            && **argv.offset(0 as libc::c_int as isize) as libc::c_int == '-' as i32
-        {
-            let mut temp: *const libc::c_char = (*argv.offset(0 as libc::c_int as isize))
-                .offset(1 as libc::c_int as isize);
-            let mut i: size_t = 0;
-            i = 0 as libc::c_int as size_t;
-            while *temp.offset(i as isize) != 0 {
-                match *temp.offset(i as isize) as libc::c_int {
-                    101 | 69 | 110 => {}
-                    _ => {
-                        break 's_65;
-                    }
-                }
-                i = i.wrapping_add(1);
-                i;
-            }
-            if i == 0 as libc::c_int as libc::c_ulong {
-                break;
-            }
-            while *temp != 0 {
-                let fresh0 = temp;
-                temp = temp.offset(1);
-                match *fresh0 as libc::c_int {
-                    101 => {
-                        do_v9 = 1 as libc::c_int != 0;
-                    }
-                    69 => {
-                        do_v9 = 0 as libc::c_int != 0;
-                    }
-                    110 => {
-                        display_return = 0 as libc::c_int != 0;
-                    }
+
+    let mut args_iter = argv.iter().skip(1);
+    let mut display_return = true;
+
+    while let Some(arg) = args_iter.next() {
+        if arg.starts_with('-') {
+            let mut chars_iter = arg.chars().skip(1);
+            while let Some(ch) = chars_iter.next() {
+                match ch {
+                    'e' => do_v9 = true,
+                    'E' => do_v9 = false,
+                    'n' => display_return = false,
                     _ => {}
                 }
             }
-            argc -= 1;
-            argc;
-            argv = argv.offset(1);
-            argv;
-        }
-    }
-    if do_v9 as libc::c_int != 0 || posixly_correct as libc::c_int != 0 {
-        while argc > 0 as libc::c_int {
-            let mut s: *const libc::c_char = *argv.offset(0 as libc::c_int as isize);
-            let mut c: libc::c_uchar = 0;
-            loop {
-                let fresh1 = s;
-                s = s.offset(1);
-                c = *fresh1 as libc::c_uchar;
-                if !(c != 0) {
-                    break;
-                }
-                if c as libc::c_int == '\\' as i32 && *s as libc::c_int != 0 {
-                    let mut current_block_48: u64;
-                    let fresh2 = s;
-                    s = s.offset(1);
-                    c = *fresh2 as libc::c_uchar;
-                    match c as libc::c_int {
-                        97 => {
-                            c = '\u{7}' as i32 as libc::c_uchar;
-                            current_block_48 = 981995395831942902;
-                        }
-                        98 => {
-                            c = '\u{8}' as i32 as libc::c_uchar;
-                            current_block_48 = 981995395831942902;
-                        }
-                        99 => return 0 as libc::c_int,
-                        101 => {
-                            c = '\u{1b}' as i32 as libc::c_uchar;
-                            current_block_48 = 981995395831942902;
-                        }
-                        102 => {
-                            c = '\u{c}' as i32 as libc::c_uchar;
-                            current_block_48 = 981995395831942902;
-                        }
-                        110 => {
-                            c = '\n' as i32 as libc::c_uchar;
-                            current_block_48 = 981995395831942902;
-                        }
-                        114 => {
-                            c = '\r' as i32 as libc::c_uchar;
-                            current_block_48 = 981995395831942902;
-                        }
-                        116 => {
-                            c = '\t' as i32 as libc::c_uchar;
-                            current_block_48 = 981995395831942902;
-                        }
-                        118 => {
-                            c = '\u{b}' as i32 as libc::c_uchar;
-                            current_block_48 = 981995395831942902;
-                        }
-                        120 => {
-                            let mut ch: libc::c_uchar = *s as libc::c_uchar;
-                            if !is_hex_digit(ch as char) {
-                                current_block_48 = 4727416921854594903;
-                            } else {
-                                s = s.offset(1); // Assuming s is a mutable pointer
-                                c = hex_to_bin(ch as char);
-                                ch = *s as u8;
-                                if is_hex_digit(ch as char) {
-                                    s = s.offset(1);
-                                    c = c * 16 + hex_to_bin(ch as char);
+        } else if do_v9 || posixly_correct {
+            for ch in arg.chars() {
+                if ch == '\\' {
+                    if let Some(next_char) = args_iter.next() {
+                        match next_char.as_str() {
+                            "a" => print!("\x07"),
+                            "b" => print!("\x08"),
+                            "c" => return 0,
+                            "e" => print!("\x1B"),
+                            "f" => print!("\x0C"),
+                            "n" => print!("\n"),
+                            "r" => print!("\r"),
+                            "t" => print!("\t"),
+                            "v" => print!("\x0B"),
+                            "x" => {
+                                if let Some(hex_digits) = args_iter.next() {
+                                    if let Ok(hex_value) = u32::from_str_radix(hex_digits, 16) {
+                                        if let Some(unicode_char) = std::char::from_u32(hex_value) {
+                                            print!("{}", unicode_char);
+                                        }
+                                    }
                                 }
-                                current_block_48 = 981995395831942902;
                             }
-                        }
-                        48 => {
-                            c = 0 as libc::c_int as libc::c_uchar;
-                            if !('0' as i32 <= *s as libc::c_int
-                                && *s as libc::c_int <= '7' as i32)
-                            {
-                                current_block_48 = 981995395831942902;
-                            } else {
-                                let fresh3 = s;
-                                s = s.offset(1);
-                                c = *fresh3 as libc::c_uchar;
-                                current_block_48 = 8028752334589084427;
+                            "0" => {
+                                if let Some(octal_digits) = args_iter.next() {
+                                    if let Ok(octal_value) = u32::from_str_radix(octal_digits, 8) {
+                                        if let Some(unicode_char) = std::char::from_u32(octal_value) {
+                                            print!("{}", unicode_char);
+                                        }
+                                    }
+                                }
                             }
-                        }
-                        49 | 50 | 51 | 52 | 53 | 54 | 55 => {
-                            current_block_48 = 8028752334589084427;
-                        }
-                        92 => {
-                            current_block_48 = 981995395831942902;
-                        }
-                        _ => {
-                            current_block_48 = 4727416921854594903;
+                            _ => print!("\\{}", next_char),
                         }
                     }
-                    match current_block_48 {
-                        8028752334589084427 => {
-                            c = (c as libc::c_int - '0' as i32) as libc::c_uchar;
-                            if '0' as i32 <= *s as libc::c_int
-                                && *s as libc::c_int <= '7' as i32
-                            {
-                                let fresh4 = s;
-                                s = s.offset(1);
-                                c = (c as libc::c_int * 8 as libc::c_int
-                                    + (*fresh4 as libc::c_int - '0' as i32)) as libc::c_uchar;
-                            }
-                            if '0' as i32 <= *s as libc::c_int
-                                && *s as libc::c_int <= '7' as i32
-                            {
-                                let fresh5 = s;
-                                s = s.offset(1);
-                                c = (c as libc::c_int * 8 as libc::c_int
-                                    + (*fresh5 as libc::c_int - '0' as i32)) as libc::c_uchar;
-                            }
-                        }
-                        4727416921854594903 => {
-                            putchar_unlocked('\\' as i32);
-                        }
-                        _ => {}
-                    }
+                } else {
+                    print!("{}", ch);
                 }
-                putchar_unlocked(c as libc::c_int);
             }
-            argc -= 1;
-            argc;
-            argv = argv.offset(1);
-            argv;
-            if argc > 0 as libc::c_int {
-                putchar_unlocked(' ' as i32);
-            }
+        } else {
+            print!("{}", arg);
         }
-    } else {
-        while argc > 0 as libc::c_int {
-            fputs_unlocked(*argv.offset(0 as libc::c_int as isize), stdout);
-            argc -= 1;
-            argc;
-            argv = argv.offset(1);
-            argv;
-            if argc > 0 as libc::c_int {
-                putchar_unlocked(' ' as i32);
-            }
+
+        if args_iter.len() > 0 {
+            print!(" ");
         }
     }
+
     if display_return {
-        putchar_unlocked('\n' as i32);
+        println!();
     }
-    return 0 as libc::c_int;
+
+    0
 }
-pub fn main() {
-    let mut args: Vec::<*mut libc::c_char> = Vec::new();
-    for arg in ::std::env::args() {
-        args.push(
-            (::std::ffi::CString::new(arg))
-                .expect("Failed to convert argument into CString.")
-                .into_raw(),
-        );
-    }
-    args.push(::core::ptr::null_mut());
-    unsafe {
-        ::std::process::exit(
-            main_0(
-                (args.len() - 1) as libc::c_int,
-                args.as_mut_ptr() as *mut *mut libc::c_char,
-            ) as i32,
-        )
-    }
+
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+
+    std::process::exit(main_0(args.len() as i32, &args));
 }
