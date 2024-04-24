@@ -96,120 +96,57 @@ pub struct infomap {
 }
 pub const DEFAULT_ECHO_TO_XPG: C2RustUnnamed = 0;
 pub type C2RustUnnamed = libc::c_uint;
+use std::collections::HashMap;
 #[inline]
-unsafe extern "C" fn emit_ancillary_info(mut program: *const libc::c_char) {
-    let infomap_0: [infomap; 7] = [
-        {
-            let mut init = infomap {
-                program: b"[\0" as *const u8 as *const libc::c_char,
-                node: b"test invocation\0" as *const u8 as *const libc::c_char,
-            };
-            init
-        },
-        {
-            let mut init = infomap {
-                program: b"coreutils\0" as *const u8 as *const libc::c_char,
-                node: b"Multi-call invocation\0" as *const u8 as *const libc::c_char,
-            };
-            init
-        },
-        {
-            let mut init = infomap {
-                program: b"sha224sum\0" as *const u8 as *const libc::c_char,
-                node: b"sha2 utilities\0" as *const u8 as *const libc::c_char,
-            };
-            init
-        },
-        {
-            let mut init = infomap {
-                program: b"sha256sum\0" as *const u8 as *const libc::c_char,
-                node: b"sha2 utilities\0" as *const u8 as *const libc::c_char,
-            };
-            init
-        },
-        {
-            let mut init = infomap {
-                program: b"sha384sum\0" as *const u8 as *const libc::c_char,
-                node: b"sha2 utilities\0" as *const u8 as *const libc::c_char,
-            };
-            init
-        },
-        {
-            let mut init = infomap {
-                program: b"sha512sum\0" as *const u8 as *const libc::c_char,
-                node: b"sha2 utilities\0" as *const u8 as *const libc::c_char,
-            };
-            init
-        },
-        {
-            let mut init = infomap {
-                program: 0 as *const libc::c_char,
-                node: 0 as *const libc::c_char,
-            };
-            init
-        },
-    ];
-    let mut node: *const libc::c_char = program;
-    let mut map_prog: *const infomap = infomap_0.as_ptr();
-    while !((*map_prog).program).is_null()
-        && !(strcmp(program, (*map_prog).program) == 0 as libc::c_int)
-    {
-        map_prog = map_prog.offset(1);
-        map_prog;
-    }
-    if !((*map_prog).node).is_null() {
-        node = (*map_prog).node;
-    }
-    printf(
-        gettext(b"\n%s online help: <%s>\n\0" as *const u8 as *const libc::c_char),
-        b"GNU coreutils\0" as *const u8 as *const libc::c_char,
-        b"https://www.gnu.org/software/coreutils/\0" as *const u8 as *const libc::c_char,
+fn emit_ancillary_info(program: &str) {
+    // Define the infomap
+    let infomap: HashMap<&str, Option<&str>> = [
+        ("[", Some("test invocation")),
+        ("coreutils", Some("Multi-call invocation")),
+        ("sha224sum", Some("sha2 utilities")),
+        ("sha256sum", Some("sha2 utilities")),
+        ("sha384sum", Some("sha2 utilities")),
+        ("sha512sum", Some("sha2 utilities")),
+    ]
+    .iter()
+    .cloned()
+    .collect();
+
+    // Obtain the node from the infomap based on the program
+    let node = infomap.get(program).and_then(|&node| node);
+
+    // Print the online help message
+    println!(
+        "\n{} online help: <{}>",
+        "GNU coreutils",
+        "https://www.gnu.org/software/coreutils/"
     );
-    let mut lc_messages: *const libc::c_char = setlocale(
-        5 as libc::c_int,
-        0 as *const libc::c_char,
-    );
-    if !lc_messages.is_null()
-        && strncmp(
-            lc_messages,
-            b"en_\0" as *const u8 as *const libc::c_char,
-            (::core::mem::size_of::<[libc::c_char; 4]>() as libc::c_ulong)
-                .wrapping_sub(1 as libc::c_int as libc::c_ulong),
-        ) != 0
-    {
-        fputs_unlocked(
-            gettext(
-                b"Report any translation bugs to <https://translationproject.org/team/>\n\0"
-                    as *const u8 as *const libc::c_char,
-            ),
-            stdout,
-        );
+
+    // Check the LC_MESSAGES locale
+    if let Some(lc_messages) = std::env::var("LC_MESSAGES").ok() {
+        if !lc_messages.starts_with("en_") {
+            println!(
+                "{}",
+                "Report any translation bugs to <https://translationproject.org/team/>"
+            );
+        }
     }
-    let mut url_program: *const libc::c_char = if strcmp(
-        program,
-        b"[\0" as *const u8 as *const libc::c_char,
-    ) == 0 as libc::c_int
-    {
-        b"test\0" as *const u8 as *const libc::c_char
-    } else {
-        program
-    };
-    printf(
-        gettext(b"Full documentation <%s%s>\n\0" as *const u8 as *const libc::c_char),
-        b"https://www.gnu.org/software/coreutils/\0" as *const u8 as *const libc::c_char,
-        url_program,
+
+    // Define the URL for the program documentation
+    let url_program = if program == "[" { "test" } else { program };
+
+    // Print the full documentation URL
+    println!(
+        "Full documentation <{}{}>",
+        "https://www.gnu.org/software/coreutils/",
+        url_program
     );
-    printf(
-        gettext(
-            b"or available locally via: info '(coreutils) %s%s'\n\0" as *const u8
-                as *const libc::c_char,
-        ),
-        node,
-        if node == program {
-            b" invocation\0" as *const u8 as *const libc::c_char
-        } else {
-            b"\0" as *const u8 as *const libc::c_char
-        },
+
+    // Print the local documentation info
+    println!(
+        "or available locally via: info '(coreutils) {}{}'",
+        node.unwrap_or(program),
+        if node.is_none() { " invocation" } else { "" }
     );
 }
 #[inline]
@@ -320,7 +257,7 @@ pub unsafe extern "C" fn usage(mut status: libc::c_int) {
         ),
         stdout,
     );
-    emit_ancillary_info(b"echo\0" as *const u8 as *const libc::c_char);
+    emit_ancillary_info("echo");
     exit(status);
 }
 fn hex_to_bin(c: char) -> u8 {
