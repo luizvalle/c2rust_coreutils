@@ -323,16 +323,16 @@ pub unsafe extern "C" fn usage(mut status: libc::c_int) {
     emit_ancillary_info(b"echo\0" as *const u8 as *const libc::c_char);
     exit(status);
 }
-unsafe extern "C" fn hextobin(mut c: libc::c_uchar) -> libc::c_int {
-    match c as libc::c_int {
-        97 | 65 => return 10 as libc::c_int,
-        98 | 66 => return 11 as libc::c_int,
-        99 | 67 => return 12 as libc::c_int,
-        100 | 68 => return 13 as libc::c_int,
-        101 | 69 => return 14 as libc::c_int,
-        102 | 70 => return 15 as libc::c_int,
-        _ => return c as libc::c_int - '0' as i32,
-    };
+fn hex_to_bin(c: char) -> u8 {
+    match c {
+        'a' | 'A' => 10,
+        'b' | 'B' => 11,
+        'c' | 'C' => 12,
+        'd' | 'D' => 13,
+        'e' | 'E' => 14,
+        'f' | 'F' => 15,
+        _ => c.to_digit(16).unwrap_or(0) as u8,
+    }
 }
 unsafe fn main_0(
     mut argc: libc::c_int,
@@ -491,12 +491,12 @@ unsafe fn main_0(
                             if !is_hex_digit(ch as char) {
                                 current_block_48 = 4727416921854594903;
                             } else {
-                                s = s.offset(1);
-                                c = hextobin(ch) as u8;
+                                s = s.offset(1); // Assuming s is a mutable pointer
+                                c = hex_to_bin(ch as char);
                                 ch = *s as u8;
                                 if is_hex_digit(ch as char) {
                                     s = s.offset(1);
-                                    c = (c as u32 * 16 + hextobin(ch) as u32) as u8;
+                                    c = c * 16 + hex_to_bin(ch as char);
                                 }
                                 current_block_48 = 981995395831942902;
                             }
